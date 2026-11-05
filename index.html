@@ -511,7 +511,6 @@ tr.draggable-row.drag-over { border-top: 3px solid var(--blue); background: #f0f
 // =========================================================================
 // INTEGRASI GOOGLE APPS SCRIPT WEB APP
 // =========================================================================
-// Ganti string di bawah ini dengan URL Web App milik Anda (berakhiran /exec)
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz_dVaGMOKBPNAgjXO7rNbI7ULzgFQyP0hUEM1e2Mo4RQQjMpoZbzaeOWRHBVORGbb4/exec";
 
 const PASSWORD_BENAR = "IrbanSatu";
@@ -573,7 +572,7 @@ let currentCalMonth = 0;
 let currentTriwulan = 1;
 let currentSemester = 1;
 
-// FUNGSI MEMUAT DATA DARI CLOUD (GOOGLE SPREADSHEET)
+// FUNGSI MEMUAT DATA BERDASARKAN TAHUN DARI CLOUD (GOOGLE SPREADSHEET)
 async function loadStateForYear(year) {
   activeYear = year;
   const statusEl = document.getElementById('syncStatus');
@@ -587,13 +586,20 @@ async function loadStateForYear(year) {
     let result = await response.json();
     
     if (result.status === 'success') {
+      // Filter data dari spreadsheet berdasarkan kolom 'tahun'
+      let filteredActivities = (result.activities || []).filter(item => String(item.tahun || '2026') === String(year));
+      let filteredTransactions = (result.transactions || []).filter(item => String(item.tahun || '2026') === String(year));
+      let filteredKinerja = (result.kinerjaTransactions || []).filter(item => String(item.tahun || '2026') === String(year));
+      let filteredRencana = (result.rencanaPenugasan || []).filter(item => String(item.tahun || '2026') === String(year));
+
       state = {
         tahunAnggaran: year,
-        activities: (result.activities && result.activities.length) ? result.activities : seedActivities2026,
-        transactions: (result.transactions && result.transactions.length) ? result.transactions : seedTransactions2026,
-        kinerjaTransactions: (result.kinerjaTransactions && result.kinerjaTransactions.length) ? result.kinerjaTransactions : seedKinerjaTransactions2026,
-        rencanaPenugasan: (result.rencanaPenugasan && result.rencanaPenugasan.length) ? result.rencanaPenugasan : seedRencanaPenugasan2026
+        activities: filteredActivities.length ? filteredActivities : (year === "2026" ? seedActivities2026 : seedActivities2026.map(a => ({...a, pagu: 0, jmlTgt: 1}))),
+        transactions: filteredTransactions.length ? filteredTransactions : [],
+        kinerjaTransactions: filteredKinerja.length ? filteredKinerja : [],
+        rencanaPenugasan: filteredRencana.length ? filteredRencana : []
       };
+
       if (statusEl) {
         statusEl.textContent = 'Tersambung Cloud';
         statusEl.style.background = '#12b76a';
@@ -620,7 +626,7 @@ async function loadStateForYear(year) {
           rencanaPenugasan: seedRencanaPenugasan2026
         };
       } else {
-        let copyActivities = seedActivities2026.map(a => ({...a}));
+        let copyActivities = seedActivities2026.map(a => ({...a, pagu: 0}));
         state = {
           tahunAnggaran: year,
           activities: copyActivities,
@@ -639,7 +645,7 @@ function gantiTahun(year) {
   document.getElementById('selectTahun').value = year;
 }
 
-// FUNGSI MENYIMPAN DATA SECARA REAL-TIME KE CLOUD (GOOGLE SPREADSHEET)
+// FUNGSI MENYIMPAN DATA DENGAN MENYERTAKAN PROPERTI TAHUN KE CLOUD
 async function saveState() {
   renderAll();
   
@@ -654,13 +660,23 @@ async function saveState() {
   }
 
   try {
+    // Ambil data global yang sudah ada atau kirim state saat ini dengan menyertakan tahun aktif
+    let payloadActivities = (state.activities || []).map(item => ({ ...item, tahun: activeYear }));
+    let payloadTransactions = (state.transactions || []).map(item => ({ ...item, tahun: activeYear }));
+    let payloadKinerja = (state.kinerjaTransactions || []).map(item => ({ ...item, tahun: activeYear }));
+    let payloadRencana = (state.rencanaPenugasan || []).map(item => ({ ...item, tahun: activeYear }));
+
     await fetch(WEB_APP_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'saveData',
-        ...state
+        tahunAnggaran: activeYear,
+        activities: payloadActivities,
+        transactions: payloadTransactions,
+        kinerjaTransactions: payloadKinerja,
+        rencanaPenugasan: payloadRencana
       })
     });
     if (statusEl) {
@@ -1224,7 +1240,7 @@ function prevPeriod() {
 function nextPeriod() {
   if (currentViewMode === 'bulan') currentCalMonth = currentCalMonth < 11 ? currentCalMonth + 1 : 0;
   else if (currentViewMode === 'triwulan') currentTriwulan = currentTriwulan < 4 ? currentTriwulan + 1 : 1;
-  else if (currentViewMode === 'semester') currentSemester = currentSemester < 2 ? currentSemester + 2 : 1;
+  else if (currentViewMode === 'semester') currentSemester = currentSemester < 2 ? currentSemester + 1 : 1;
   renderJadwalView();
 }
 
@@ -1242,6 +1258,7 @@ function addRencanaPenugasan() {
   if (!state.rencanaPenugasan) state.rencanaPenugasan = [];
 
   state.rencanaPenugasan.push({
+    tahun: activeYear,
     id: 'p_' + Date.now(),
     tglMulai: tglMulai,
     tglSelesai: tglSelesai,
@@ -1342,6 +1359,7 @@ function addTransaction() {
   let fileInput = document.getElementById('tFile');
   let file = fileInput.files[0];
   let record = {
+    tahun: activeYear,
     id: 'st_' + Date.now(),
     tanggal: document.getElementById('tTanggal').value || new Date().toISOString().split('T')[0],
     actId: document.getElementById('tActivity').value,
@@ -1450,6 +1468,7 @@ function addKinerjaTransaction() {
   let fileInput = document.getElementById('kFile');
   let file = fileInput.files[0];
   let record = {
+    tahun: activeYear,
     tanggal: document.getElementById('kTanggal').value || new Date().toISOString().split('T')[0],
     stId: stId,
     actId: st.actId,
@@ -1514,6 +1533,7 @@ function addActivity() {
   }
 
   state.activities.push({
+    tahun: activeYear,
     id: 'act_' + Date.now(),
     progNama: progNama, kegNama: kegNama, subNama: subNama, uraian: uraian,
     pagu: Number(document.getElementById('nPagu').value || 0),
