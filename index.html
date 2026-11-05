@@ -1,0 +1,1627 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kontrol Anggaran & Kinerja Irban I</title>
+<!-- Library Chart.js untuk Menampilkan Diagram/Grafik -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Library Chart.js Datalabels Plugin untuk Menampilkan Persentase di Grafik Lingkaran -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<style>
+:root{--navy:#16324f;--blue:#2463a6;--bg:#f4f6f9;--line:#e1e6ed;--muted:#667085;--green:#12b76a;--red:#f04438}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font:14px 'Segoe UI',Arial,sans-serif;color:#1d2939}
+header{background:var(--navy);color:white;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+header .header-title h1{font-size:20px;margin:0 0 4px}
+header .header-title p{margin:0;color:#d7e4f2;font-size:13px}
+
+/* Styling Dropdown Tahun Anggaran Minimalis */ 
+.year-selector-box{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.2)} 
+.year-selector-box label{color:#d7e4f2;margin:0;font-weight:600;font-size:12px} 
+.year-selector-box select{width:auto;background:white;color:var(--navy);font-weight:bold;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-size:13px}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:12px 20px;background:white;border-bottom:1px solid var(--line)} 
+button,.tab{border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#eaf0f7;color:var(--navy);font-weight:600;font-size:13px} 
+button.primary,.tab.active{background:var(--blue);color:white} 
+button.danger{background:#fee4e2;color:#b42318} 
+button.secondary{background:#e2e8f0;color:#334155} 
+main{max-width:1300px;margin:20px auto;padding:0 18px} 
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px} 
+.grid-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px;margin-top:16px} 
+.card,.panel{background:white;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px} 
+.kpi small{color:var(--muted);font-weight:600}
+.kpi strong{display:block;font-size:22px;margin-top:6px;color:var(--navy)} 
+h2{font-size:17px;margin:0 0 12px;color:var(--navy)}
+h3{font-size:14px;margin:0 0 10px} 
+table{width:100%;border-collapse:collapse;background:white}
+th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:middle} 
+th{background:#f8fafc;color:#475467;font-size:12px;font-weight:700} 
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px} 
+input,select,textarea{width:100%;padding:9px;border:1px solid #cfd7e2;border-radius:7px;font:inherit;background:white} 
+label{display:block;font-size:12px;color:#475467;margin:0 0 4px;font-weight:600} 
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:12px} 
+.filter-bar{display:flex;gap:12px;align-items:center;margin-bottom:12px;background:#f8fafc;padding:10px 14px;border-radius:8px;border:1px solid var(--line);flex-wrap:wrap} 
+.filter-bar div{display:flex;align-items:center;gap:6px} 
+.filter-bar label{margin:0;white-space:nowrap} 
+.filter-bar select{width:auto;padding:6px 10px} 
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px} 
+.badge{padding:4px 8px;border-radius:12px;font-size:11px;font-weight:bold;display:inline-block} 
+.badge-success{background:#d1e7dd;color:#0f5132} 
+.badge-warning{background:#fff3cd;color:#664d03} 
+.badge-danger{background:#f8d7da;color:#842029} 
+.badge-info{background:#cff4fc;color:#055160} 
+.hidden{display:none}
+
+/* Indikator Warna */
+.badge-merah-solid { background-color: #f04438 !important; color: #ffffff !important; font-weight: bold; } 
+.badge-kuning-lemon { background-color: #facc15 !important; color: #713f12 !important; font-weight: bold; } 
+.badge-hijau-menyala { background-color: #12b76a !important; color: #ffffff !important; font-weight: bold; }
+
+/* Drag and Drop */
+tr.draggable-row { transition: background-color 0.15s ease; } 
+tr.draggable-row.dragging { opacity: 0.4; background: #e2e8f0; } 
+tr.draggable-row.drag-over { border-top: 3px solid var(--blue); background: #f0f4f8; } 
+.drag-handle { cursor: grab; padding: 4px 8px; background: #e2e8f0; border-radius: 6px; color: var(--navy); font-weight: bold; display: inline-flex; align-items: center; justify-content: center; user-select: none; } 
+.drag-handle:active { cursor: grabbing; }
+
+/* Modal Password */
+#authOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(22, 50, 79, 0.85); display: flex; justify-content: center; align-items: center; z-index: 9999; } 
+.auth-card { background: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; } 
+.auth-card h2 { margin-bottom: 8px; color: var(--navy); } 
+.auth-card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; } 
+.auth-card input { margin-bottom: 12px; text-align: center; font-size: 16px; letter-spacing: 2px; } 
+.auth-card button { width: 100%; padding: 10px; font-size: 14px; } 
+.error-msg { color: var(--red); font-size: 12px; margin-top: 8px; display: none; }
+
+/* Kalender Penugasan */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 12px; } 
+.calendar-day-header { text-align: center; font-weight: bold; background: #eaf0f7; padding: 8px; border-radius: 6px; color: var(--navy); font-size: 12px; } 
+.calendar-day { background: white; border: 1px solid var(--line); border-radius: 6px; min-height: 75px; padding: 6px; font-size: 12px; position: relative; transition: all 0.2s ease; } 
+.calendar-day.other-month { background: #f8fafc; opacity: 0.4; } 
+.calendar-day .day-num { font-weight: bold; color: var(--navy); } 
+.calendar-day.has-event { cursor: pointer; border-width: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); } 
+.calendar-day.has-event:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); filter: brightness(0.95); }
+.event-dot-container { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 8px; } 
+.event-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.view-mode-group { display: flex; gap: 4px; background: #f8fafc; padding: 4px; border-radius: 8px; border: 1px solid var(--line); } 
+.view-mode-btn { background: transparent; color: var(--navy); padding: 6px 12px; font-size: 12px; border-radius: 6px; } 
+.view-mode-btn.active { background: var(--blue); color: white; }
+.legend-box { display: flex; gap: 16px; flex-wrap: wrap; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 12px; font-size: 12px; align-items: center; } 
+.legend-item { display: flex; align-items: center; gap: 6px; }
+
+/* Status Sync Cloud Indicator */
+#syncStatus { font-size: 11px; padding: 4px 8px; border-radius: 4px; color: white; background: #64748b; margin-left: 10px; vertical-align: middle; }
+
+@media print { 
+  body { background: white !important; color: black !important; } 
+  header { background: #16324f !important; color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
+  nav, .actions, .year-selector-box, #authOverlay, .filter-bar, button, .view-mode-group, .drag-handle, input[type="file"] { display: none !important; } 
+  main section { display: block !important; page-break-after: always; margin-bottom: 30px; } 
+  main section:last-child { page-break-after: auto; } 
+  .card, .panel { border: 1px solid #ccc !important; box-shadow: none !important; margin-bottom: 20px !important; page-break-inside: avoid; } 
+  .tablewrap { overflow: visible !important; } 
+  table { width: 100% !important; } 
+  th, td { border: 1px solid #cbd5e1 !important; } 
+} 
+</style>
+</head>
+<body>
+
+<!-- OVERLAY FORM PASSWORD -->
+<div id="authOverlay">
+  <div class="auth-card">
+    <h2>Autentikasi Masuk</h2>
+    <p>Masukkan password untuk mengakses Aplikasi Kontrol Anggaran & Kinerja Irban I.</p>
+    <input type="password" id="inputPassword" placeholder="•••••" onkeydown="if(event.key === 'Enter') cekPassword()">
+    <button class="primary" onclick="cekPassword()">Masuk Aplikasi</button>
+    <div id="errorMsg" class="error-msg">Password salah! Silakan coba lagi.</div>
+  </div>
+</div>
+
+<header>
+  <div class="header-title">
+    <h1>Kontrol Anggaran & Kinerja Internal — IRBAN Wilayah I <span id="syncStatus">Koneksi Cloud...</span></h1>
+    <p>INSPEKTORAT DAERAH KABUPATEN KOLAKA UTARA · TAHUN ANGGARAN <span id="headerTahunAnggaran" style="font-weight:bold; border-bottom:1px dashed #fff;">2026</span></p>
+  </div>
+
+  <div class="year-selector-box">
+    <label for="selectTahun">Pilih Tahun:</label>
+    <select id="selectTahun" onchange="gantiTahun(this.value)">
+      <option value="2026">2026</option>
+      <option value="2027">2027</option>
+      <option value="2028">2028</option>
+    </select>
+  </div>
+</header>
+
+<nav>
+  <button class="tab active" data-page="dashboard">Dashboard</button>
+  <button class="tab" data-page="kegiatan">Program dan Target</button>
+  <button class="tab" data-page="rencanaPenugasan">Rencana Penugasan</button>
+  <button class="tab" data-page="transaksi">Realisasi Anggaran</button>
+  <button class="tab" data-page="realisasiKinerja">Realisasi Kinerja</button>
+  <button class="tab" data-page="laporan">Laporan dan Back Up</button>
+</nav>
+
+<main>
+  <!-- TAB 1: DASHBOARD -->
+  <section id="dashboard">
+    <div class="grid">
+      <div class="card kpi"><small>Total Pagu Anggaran Irban I</small><strong id="kPagu">Rp0</strong></div>
+      <div class="card kpi"><small>Total Realisasi Anggaran Irban I</small><strong id="kReal">Rp0</strong></div>
+      <div class="card kpi"><small>Sisa Anggaran Irban I</small><strong id="kSisa">Rp0</strong></div>
+      <div class="card kpi"><small>Rata-rata Capaian Kinerja</small><strong id="kKinerja">0%</strong></div>
+    </div>
+
+    <div class="grid-charts">
+      <div class="panel">
+        <h2>Rekapitulasi Realisasi Anggaran (Total)</h2>
+        <div style="position:relative; height:300px;"><canvas id="chartAnggaranPie"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2>Rekapitulasi Capaian Kinerja (Total)</h2>
+        <div style="position:relative; height:300px;"><canvas id="chartKinerjaPie"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Ringkasan Total Pengendalian</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Keterangan Rekapitulasi Total</th>
+              <th>Pagu Anggaran / Kinerja</th>
+              <th>Realisasi Total</th>
+              <th>Persentase (%)</th>
+            </tr>
+          </thead>
+          <tbody id="summaryRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Rekapitulasi Rincian Realisasi Anggaran & Capaian Kinerja per Kegiatan</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Uraian Kegiatan / Subkegiatan</th>
+              <th>Pagu Anggaran</th>
+              <th>Realisasi Anggaran</th>
+              <th>Sisa Anggaran</th>
+              <th>% Anggaran</th>
+              <th>Target Kinerja</th>
+              <th>Realisasi Kinerja</th>
+              <th>% Capaian</th>
+            </tr>
+          </thead>
+          <tbody id="dashboardDetailRows"></tbody>
+          <tfoot id="dashboardDetailFooter" style="background:#eaf0f7; font-weight:bold; border-top:2px solid var(--navy);"></tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: PROGRAM DAN TARGET -->
+  <section id="kegiatan" class="hidden">
+    <div class="panel">
+      <h2>Data Kegiatan & Target Kinerja Tahunan Irban I (<span class="lblTahun">2026</span>)</h2>
+      <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">💡 <b>Tips:</b> Anda dapat menggeser urutan baris dengan menahan tombol <b>☰ Geser</b> di kolom aksi sebelah kanan, atau menggunakan tombol ▲ ▼.</p>
+      <div class="formgrid">
+        <div><label>Cari Uraian Kegiatan</label><input id="searchAct" placeholder="Ketik kata kunci..." oninput="renderActivities()"></div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Program / Kegiatan / Subkegiatan</th>
+              <th>Uraian Kegiatan</th>
+              <th>Pagu Anggaran (Rp)</th>
+              <th>Target Kinerja (Angka)</th>
+              <th>Satuan Target</th>
+              <th>Action / Geser Urutan</th>
+            </tr>
+          </thead>
+          <tbody id="activities"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Tambah Rincian Kegiatan</h3>
+      <div class="formgrid">
+        <div><label>Nama Program</label><input id="nProgNama" placeholder="Contoh: PROGRAM PENYELENGGARAAN PENGAWASAN"></div>
+        <div><label>Nama Kegiatan</label><input id="nKegNama" placeholder="Contoh: Penyelenggaraan Pengawasan Internal"></div>
+        <div><label>Nama Subkegiatan</label><input id="nSubNama" placeholder="Contoh: Pengawasan Kinerja Pemerintah Daerah"></div>
+        <div><label>Uraian Kegiatan</label><input id="nUraian" placeholder="Contoh: Audit Kinerja"></div>
+        <div><label>Pagu Anggaran (Rp)</label><input id="nPagu" type="number" min="0" placeholder="0"></div>
+        <div><label>Target Kinerja (Angka)</label><input id="nTgtJml" type="number" min="1" placeholder="1"></div>
+        <div><label>Satuan Target</label><input id="nTgtSat" placeholder="Contoh: Laporan / Dokumen"></div>
+      </div>
+      <button class="primary" onclick="addActivity()">Tambah Kegiatan</button>
+    </div>
+  </section>
+
+  <!-- TAB 3: RENCANA PENUGASAN -->
+  <section id="rencanaPenugasan" class="hidden">
+    <div class="panel">
+      <h2>Input Rencana Penugasan</h2>
+      <div class="formgrid">
+        <div><label>Tanggal Mulai</label><input id="pTglMulai" type="date"></div>
+        <div><label>Tanggal Selesai</label><input id="pTglSelesai" type="date"></div>
+        <div><label>Pilih Kegiatan (Opsional)</label><select id="pActivitySelect"></select></div>
+        <div>
+          <label>Jenis Kegiatan / Penugasan</label>
+          <select id="pJenisKegiatan">
+            <option value="Audit Kinerja / Ketaatan">Audit Kinerja / Ketaatan</option>
+            <option value="Reviu & Evaluasi">Reviu & Evaluasi</option>
+            <option value="Monitoring & Asistensi">Monitoring & Asistensi</option>
+            <option value="Pemeriksaan Khusus">Pemeriksaan Khusus</option>
+            <option value="Lain-lain">Lain-lain</option>
+          </select>
+        </div>
+        <div><label>Uraian Rencana Penugasan</label><input id="pUraian" placeholder="Contoh: Audit Ketaatan Dana Desa Tahap I"></div>
+        <div><label>Tim / Penanggung Jawab</label><input id="pTim" placeholder="Contoh: Tim Audit A / Irban I"></div>
+      </div>
+      <button class="primary" onclick="addRencanaPenugasan()">Simpan Rencana Penugasan</button>
+    </div>
+
+    <!-- KALENDER / JADWAL PENUGASAN -->
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:12px; gap:8px;">
+        <h2 style="margin:0;">Jadwal Penugasan: <span id="calHeaderLabel">Januari 2026</span></h2>
+        
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div class="view-mode-group">
+            <button class="view-mode-btn active" id="btnModeBulan" onclick="changeViewMode('bulan')">Bulanan</button>
+            <button class="view-mode-btn" id="btnModeTriwulan" onclick="changeViewMode('triwulan')">Triwulanan</button>
+            <button class="view-mode-btn" id="btnModeSemester" onclick="changeViewMode('semester')">Semesteran</button>
+            <button class="view-mode-btn" id="btnModeTahun" onclick="changeViewMode('tahun')">Tahunan</button>
+          </div>
+          <div style="display:flex; gap:4px;">
+            <button onclick="prevPeriod()">&lt; Prev</button>
+            <button onclick="nextPeriod()">Next &gt;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend-box">
+        <b>Keterangan Warna:</b>
+        <div class="legend-item"><span class="event-dot" style="background:#1d4ed8;"></span> Audit Kinerja / Ketaatan</div>
+        <div class="legend-item"><span class="event-dot" style="background:#047857;"></span> Reviu & Evaluasi</div>
+        <div class="legend-item"><span class="event-dot" style="background:#b45309;"></span> Monitoring & Asistensi</div>
+        <div class="legend-item"><span class="event-dot" style="background:#b91c1c;"></span> Pemeriksaan Khusus</div>
+        <div class="legend-item"><span class="event-dot" style="background:#6d28d9;"></span> Lain-lain</div>
+      </div>
+
+      <div id="calendarContainer"></div>
+    </div>
+
+    <!-- TABEL DAFTAR RENCANA -->
+    <div class="panel">
+      <h2>Daftar Rencana Penugasan TA <span class="lblTahun">2026</span></h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tanggal Mulai</th>
+              <th>Tanggal Selesai</th>
+              <th>Jenis Penugasan</th>
+              <th>Uraian Kegiatan Penugasan</th>
+              <th>Kegiatan Terkait</th>
+              <th>Tim / Keterangan</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="rencanaPenugasanRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4: REALISASI SURAT TUGAS -->
+  <section id="transaksi" class="hidden">
+    <div class="panel">
+      <h2>Input Realisasi Surat Tugas</h2>
+      <div class="formgrid">
+        <div><label>Tanggal Surat Tugas</label><input id="tTanggal" type="date"></div>
+        <div><label>Pilih Kegiatan</label><select id="tActivity"></select></div>
+        <div>
+          <label>Jenis Belanja</label>
+          <select id="tJenis">
+            <option>Perjalanan Dinas Dalam Daerah</option>
+            <option>Perjalanan Dinas Biasa</option>
+          </select>
+        </div>
+        <div><label>Nomor Surat Tugas</label><input id="tBukti" placeholder="Nomor Surat Tugas (ST)"></div>
+        <div><label>Uraian Surat Tugas</label><input id="tUraian" placeholder="Maksud perjalanan / tugas"></div>
+        <div><label>Output Kegiatan</label><input id="tTargetOutput" placeholder="Contoh: Laporan Hasil Audit..."></div>
+        <div><label>Jumlah Realisasi (Rp)</label><input id="tJumlah" type="number" min="1"></div>
+        <div><label>Upload Dokumen Surat Tugas</label><input id="tFile" type="file" accept=".pdf,.doc,.docx,.jpg,.png"></div>
+      </div>
+      <button class="primary" onclick="addTransaction()">Simpan Realisasi ST</button>
+    </div>
+
+    <div class="panel">
+      <h2>Daftar Realisasi Surat Tugas</h2>
+      <div class="filter-bar">
+        <div>
+          <label for="filterStSort">Urutan Tanggal ST:</label>
+          <select id="filterStSort" onchange="renderTransactions()">
+            <option value="asc">Terlama ke Terbaru</option>
+            <option value="desc">Terbaru ke Terlama</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterStLimit">Tampilkan Data:</label>
+          <select id="filterStLimit" onchange="renderTransactions()">
+            <option value="all">Semua Data</option>
+            <option value="5">5 Data</option>
+            <option value="10">10 Data</option>
+            <option value="20">20 Data</option>
+            <option value="50">50 Data</option>
+          </select>
+        </div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Kegiatan</th>
+              <th>Jenis Belanja</th>
+              <th>Nomor Surat Tugas</th>
+              <th>Uraian Surat Tugas</th>
+              <th>Target Output</th>
+              <th>Jumlah Realisasi (Rp)</th>
+              <th>Dokumen Surat Tugas</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="transactions"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Rekapitulasi Total Realisasi Anggaran per Kegiatan</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Uraian Kegiatan</th>
+              <th>Pagu Anggaran</th>
+              <th>Realisasi Anggaran</th>
+              <th>Sisa Anggaran</th>
+              <th>% Penyerapan</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="realisasiAnggaranRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 5: REALISASI KINERJA -->
+  <section id="realisasiKinerja" class="hidden">
+    <div class="panel">
+      <h2>Input Entri Realisasi Kinerja</h2>
+      <div class="formgrid">
+        <div><label>Tanggal Realisasi</label><input id="kTanggal" type="date"></div>
+        <div><label>Pilih Nomor Surat Tugas (ST)</label><select id="kStSelect" onchange="onStSelectChange()"></select></div>
+        <div><label>Kegiatan Terkait</label><input id="kActivityDisplay" disabled style="background:#f0f4f8; font-weight:600;" placeholder="Otomatis terisi dari ST"></div>
+        <div><label>Nomor Laporan</label><input id="kBukti" placeholder="Nomor Laporan"></div>
+        <div><label>Uraian / Keterangan Kinerja</label><input id="kUraian" placeholder="Laporan Hasil..."></div>
+        <div><label>Jumlah Realisasi Kinerja (Volume)</label><input id="kJumlah" type="number" step="0.1" min="0" placeholder="Contoh: 1"></div>
+        <div><label>Upload Dokumen Laporan</label><input id="kFile" type="file" accept=".pdf,.doc,.docx,.jpg,.png"></div>
+      </div>
+      <button class="primary" onclick="addKinerjaTransaction()">Simpan Realisasi Kinerja</button>
+    </div>
+
+    <div class="panel">
+      <h2>Riwayat Entri Realisasi Kinerja</h2>
+      <div class="filter-bar">
+        <div>
+          <label for="filterKinSort">Urutan Tanggal Realisasi:</label>
+          <select id="filterKinSort" onchange="renderRealisasiKinerja()">
+            <option value="asc">Terlama ke Terbaru</option>
+            <option value="desc">Terbaru ke Terlama</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterKinLimit">Tampilkan Data:</label>
+          <select id="filterKinLimit" onchange="renderRealisasiKinerja()">
+            <option value="all">Semua Data</option>
+            <option value="5">5 Data</option>
+            <option value="10">10 Data</option>
+            <option value="20">20 Data</option>
+            <option value="50">50 Data</option>
+          </select>
+        </div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Surat Tugas (ST)</th>
+              <th>Kegiatan</th>
+              <th>Nomor / Dokumen Bukti</th>
+              <th>Uraian / Keterangan</th>
+              <th>Realisasi Kinerja</th>
+              <th>Dokumen Laporan</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="kinerjaTransactions"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Rekapitulasi Total Capaian Kinerja per Kegiatan</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Uraian Kegiatan</th>
+              <th>Target Kinerja (Angka)</th>
+              <th>Satuan Target</th>
+              <th>Total Realisasi Kinerja</th>
+              <th>% Capaian</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="realisasiKinerjaRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 6: LAPORAN DAN BACK UP -->
+  <section id="laporan" class="hidden">
+    <div class="panel">
+      <h2>Laporan & Pencadangan Data TA <span class="lblTahun">2026</span></h2>
+      <p>Unduh rekapitulasi data dalam CSV atau lakukan pencadangan data JSON secara berkala agar dapat dibuka di perangkat lain atau diautentikasi ke Google Drive / OneDrive.</p>
+      <div class="actions">
+        <button class="primary" onclick="exportCSV()">Unduh Rekap CSV</button>
+        <button onclick="backupJSON()">Backup Data (JSON)</button>
+        <label style="display:inline-block;cursor:pointer">
+          <span class="tab" style="display:inline-block">Pulihkan Backup (JSON)</span>
+          <input type="file" id="restoreFile" accept=".json" onchange="restoreBackup(event)" style="display:none">
+        </label>
+        <button onclick="cetakSemuaLaporan()">Cetak Laporan / PDF</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Panduan Pencadangan Cloud (Google Spreadsheet)</h3>
+      <ul>
+        <li><b>Google Spreadsheet Real-Time:</b> Aplikasi ini dikonfigurasi untuk menyinkronkan data secara otomatis ke Google Spreadsheet setiap kali ada perubahan data.</li>
+        <li><b>Cadangan Lokal:</b> Data tersimpan secara otomatis pada memori browser (localStorage) jika perangkat sedang offline.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<script>
+// =========================================================================
+// INTEGRASI GOOGLE APPS SCRIPT WEB APP
+// =========================================================================
+// Ganti string di bawah ini dengan URL Web App milik Anda (berakhiran /exec)
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz_dVaGMOKBPNAgjXO7rNbI7ULzgFQyP0hUEM1e2Mo4RQQjMpoZbzaeOWRHBVORGbb4/exec";
+
+const PASSWORD_BENAR = "IrbanSatu";
+
+function cekPassword() {
+  const inputVal = document.getElementById('inputPassword').value;
+  const errorEl = document.getElementById('errorMsg');
+  if (inputVal === PASSWORD_BENAR) {
+    document.getElementById('authOverlay').style.display = 'none';
+    sessionStorage.setItem('isLoggedIn', 'true');
+  } else {
+    errorEl.style.display = 'block';
+    document.getElementById('inputPassword').value = '';
+    document.getElementById('inputPassword').focus();
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('isLoggedIn') === 'true') {
+    document.getElementById('authOverlay').style.display = 'none';
+  } else {
+    document.getElementById('inputPassword').focus();
+  }
+});
+
+const seedActivities2026 = [
+  {id: "act1", progNama: "PROGRAM PENYELENGGARAAN PENGAWASAN", kegNama: "Penyelenggaraan Pengawasan Internal", subNama: "Pengawasan Kinerja Pemerintah Daerah", uraian: "Audit Kinerja", pagu: 30025000, jmlTgt: 1, satuanTgt: "Laporan"},
+  {id: "act2", progNama: "PROGRAM PENYELENGGARAAN PENGAWASAN", kegNama: "Penyelenggaraan Pengawasan Internal", subNama: "Pengawasan Keuangan Pemerintah", uraian: "Audit Ketaatan", pagu: 51360000, jmlTgt: 1, satuanTgt: "Laporan"},
+  {id: "act3", progNama: "PROGRAM PENYELENGGARAAN PENGAWASAN", kegNama: "Penyelenggaraan Pengawasan Internal", subNama: "Pengawasan Keuangan Pemerintah", uraian: "Kas Opname", pagu: 13400000, jmlTgt: 1, satuanTgt: "Kegiatan"},
+  {id: "act4", progNama: "PROGRAM PENYELENGGARAAN PENGAWASAN", kegNama: "Penyelenggaraan Pengawasan Internal", subNama: "Reviu Laporan Kinerja", uraian: "Evaluasi SAKIP", pagu: 11500000, jmlTgt: 1, satuanTgt: "Laporan"},
+  {id: "act5", progNama: "PROGRAM PENYELENGGARAAN PENGAWASAN", kegNama: "Penyelenggaraan Pengawasan Internal", subNama: "Reviu Laporan Keuangan", uraian: "Reviu Penyerapan Anggaran", pagu: 14400000, jmlTgt: 4, satuanTgt: "Laporan"},
+  {id: "act7", progNama: "PROGRAM PENYELENGGARAAN PENGAWASAN", kegNama: "Penyelenggaraan Pengawasan Internal", subNama: "Pengawasan Desa", uraian: "Pemeriksaan Desa", pagu: 76000000, jmlTgt: 1, satuanTgt: "Laporan"},
+  {id: "act9", progNama: "PROGRAM PENYELENGGARAAN PENGAWASAN", kegNama: "Penyelenggaraan Pengawasan dengan Tujuan Tertentu", subNama: "Pengawasan dengan tujuan tertentu", uraian: "Audit Dana BOS", pagu: 10800000, jmlTgt: 1, satuanTgt: "Laporan"},
+  {id: "act10", progNama: "PROGRAM PERUMUSAN KEBIJAKAN, PENDAMPINGAN DAN ASISTENSI", kegNama: "Pendampingan dan Asistensi", subNama: "Pendampingan dan asistensi urusan pemerintahan daerah", uraian: "Reviu SSH", pagu: 10800000, jmlTgt: 1, satuanTgt: "Dokumen"}
+];
+
+const seedTransactions2026 = [
+  {id: "st1", tanggal: "2026-01-12", actId: "act2", jenis: "Perjalanan Dinas Dalam Daerah", bukti: "ST/001/Irban-I/I/2026", uraian: "Audit Ketaatan Pengawasan Keuangan", targetOutput: "1 Laporan Hasil Audit (LHA)", jumlah: 51359400},
+  {id: "st2", tanggal: "2026-01-18", actId: "act3", jenis: "Perjalanan Dinas Dalam Daerah", bukti: "ST/002/Irban-I/I/2026", uraian: "Pelaksanaan Kas Opname M2", targetOutput: "1 Berita Acara Kas Opname", jumlah: 9190000}
+];
+
+const seedKinerjaTransactions2026 = [
+  {tanggal: "2026-01-15", stId: "st1", actId: "act2", bukti: "Laporan/01", uraian: "Laporan Hasil Audit Ketaatan", jumlah: 1},
+  {tanggal: "2026-01-20", stId: "st2", actId: "act3", bukti: "BA/02", uraian: "Berita Acara Kas Opname", jumlah: 1}
+];
+
+const seedRencanaPenugasan2026 = [
+  {id: "p1", tglMulai: "2026-01-10", tglSelesai: "2026-01-15", actId: "act2", jenis: "Audit Kinerja / Ketaatan", uraian: "Persiapan & Pelaksanaan Audit Ketaatan Keuangan", tim: "Tim Audit Irban I"},
+  {id: "p2", tglMulai: "2026-01-14", tglSelesai: "2026-01-18", actId: "act3", jenis: "Reviu & Evaluasi", uraian: "Pelaksanaan Kas Opname M2", tim: "Tim Kas Opname"},
+  {id: "p3", tglMulai: "2026-03-10", tglSelesai: "2026-03-17", actId: "act4", jenis: "Reviu & Evaluasi", uraian: "Evaluasi SAKIP Laporan Kinerja OPD", tim: "Tim Evaluasi SAKIP"},
+  {id: "p4", tglMulai: "2026-06-01", tglSelesai: "2026-06-07", actId: "act10", jenis: "Monitoring & Asistensi", uraian: "Reviu Standar Satuan Harga (SSH) Pemda", tim: "Tim Reviu SSH"}
+];
+
+let activeYear = "2026";
+let state = { tahunAnggaran: "2026", activities: [], transactions: [], kinerjaTransactions: [], rencanaPenugasan: [] };
+
+let currentViewMode = "bulan";
+let currentCalMonth = 0;
+let currentTriwulan = 1;
+let currentSemester = 1;
+
+// FUNGSI MEMUAT DATA DARI CLOUD (GOOGLE SPREADSHEET)
+async function loadStateForYear(year) {
+  activeYear = year;
+  const statusEl = document.getElementById('syncStatus');
+  if (statusEl) {
+    statusEl.textContent = 'Memuat dari Cloud...';
+    statusEl.style.background = '#eab308';
+  }
+
+  try {
+    let response = await fetch(WEB_APP_URL);
+    let result = await response.json();
+    
+    if (result.status === 'success') {
+      state = {
+        tahunAnggaran: year,
+        activities: (result.activities && result.activities.length) ? result.activities : seedActivities2026,
+        transactions: (result.transactions && result.transactions.length) ? result.transactions : seedTransactions2026,
+        kinerjaTransactions: (result.kinerjaTransactions && result.kinerjaTransactions.length) ? result.kinerjaTransactions : seedKinerjaTransactions2026,
+        rencanaPenugasan: (result.rencanaPenugasan && result.rencanaPenugasan.length) ? result.rencanaPenugasan : seedRencanaPenugasan2026
+      };
+      if (statusEl) {
+        statusEl.textContent = 'Tersambung Cloud';
+        statusEl.style.background = '#12b76a';
+      }
+    }
+  } catch (err) {
+    console.warn("Gagal terhubung ke Cloud, memuat dari penyimpanan lokal:", err);
+    if (statusEl) {
+      statusEl.textContent = 'Mode Offline (Lokal)';
+      statusEl.style.background = '#f04438';
+    }
+    const storageKey = `irban1_ta_${year}_v1`;
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      state = JSON.parse(saved);
+      if (!state.rencanaPenugasan) state.rencanaPenugasan = [];
+    } else {
+      if (year === "2026") {
+        state = {
+          tahunAnggaran: "2026",
+          activities: seedActivities2026,
+          transactions: seedTransactions2026,
+          kinerjaTransactions: seedKinerjaTransactions2026,
+          rencanaPenugasan: seedRencanaPenugasan2026
+        };
+      } else {
+        let copyActivities = seedActivities2026.map(a => ({...a}));
+        state = {
+          tahunAnggaran: year,
+          activities: copyActivities,
+          transactions: [],
+          kinerjaTransactions: [],
+          rencanaPenugasan: []
+        };
+      }
+    }
+  }
+  renderAll();
+}
+
+function gantiTahun(year) {
+  loadStateForYear(year);
+  document.getElementById('selectTahun').value = year;
+}
+
+// FUNGSI MENYIMPAN DATA SECARA REAL-TIME KE CLOUD (GOOGLE SPREADSHEET)
+async function saveState() {
+  renderAll();
+  
+  // Tetap simpan cadangan lokal
+  const storageKey = `irban1_ta_${activeYear}_v1`;
+  localStorage.setItem(storageKey, JSON.stringify(state));
+
+  const statusEl = document.getElementById('syncStatus');
+  if (statusEl) {
+    statusEl.textContent = 'Menyimpan...';
+    statusEl.style.background = '#3b82f6';
+  }
+
+  try {
+    await fetch(WEB_APP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'saveData',
+        ...state
+      })
+    });
+    if (statusEl) {
+      statusEl.textContent = 'Tersimpan ke Cloud';
+      statusEl.style.background = '#12b76a';
+    }
+  } catch (err) {
+    console.error("Gagal menyinkronkan data ke Cloud:", err);
+    if (statusEl) {
+      statusEl.textContent = 'Gagal Sync Cloud';
+      statusEl.style.background = '#f04438';
+    }
+  }
+}
+
+const money = n => 'Rp' + Number(n || 0).toLocaleString('id-ID', {maximumFractionDigits:0});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function getActReal(actId) {
+  return state.transactions.filter(t => t.actId === actId).reduce((sum, t) => sum + Number(t.jumlah), 0);
+}
+
+function getActReaKin(actId) {
+  return (state.kinerjaTransactions || []).filter(t => t.actId === actId).reduce((sum, t) => sum + Number(t.jumlah), 0);
+}
+
+function getActKinerjaPct(a) {
+  let numTarget = Number(a.jmlTgt) || 1;
+  let rea = getActReaKin(a.id);
+  let pct = (rea / numTarget) * 100;
+  return Math.min(100, Math.max(0, pct));
+}
+
+let chartAnggaranPieObj = null;
+let chartKinerjaPieObj = null;
+
+function renderDashboard() {
+  let totalPagu = state.activities.reduce((s, a) => s + Number(a.pagu || 0), 0);
+  let totalReal = state.transactions.reduce((s, t) => s + Number(t.jumlah || 0), 0);
+  let sisaPagu = Math.max(0, totalPagu - totalReal);
+  
+  let allKinerja = state.activities.map(a => getActKinerjaPct(a));
+  let avgKinerja = allKinerja.length ? (allKinerja.reduce((a, b) => a + b, 0) / allKinerja.length) : 0;
+
+  document.getElementById('kPagu').textContent = money(totalPagu);
+  document.getElementById('kReal').textContent = money(totalReal);
+  document.getElementById('kSisa').textContent = money(sisaPagu);
+  document.getElementById('kKinerja').textContent = avgKinerja.toFixed(1) + '%';
+
+  let pctPenyerapan = totalPagu ? (totalReal / totalPagu * 100) : 0;
+
+  document.getElementById('summaryRows').innerHTML = `
+    <tr>
+      <td><b>Rekapitulasi Total Anggaran</b></td>
+      <td>${money(totalPagu)} (Target)</td>
+      <td>${money(totalReal)} (Realisasi)</td>
+      <td><b>${pctPenyerapan.toFixed(1)}%</b> Penyerapan</td>
+    </tr>
+    <tr>
+      <td><b>Rekapitulasi Total Capaian Kinerja</b></td>
+      <td>100% Target Tahunan</td>
+      <td>${state.activities.filter(a => getActKinerjaPct(a) >= 100).length} dari ${state.activities.length} Kegiatan Tercapai</td>
+      <td><b>${avgKinerja.toFixed(1)}%</b> Rata-rata Kinerja</td>
+    </tr>
+  `;
+
+  let totalTargetKinerja = 0;
+  let totalRealisasiKinerja = 0;
+
+  document.getElementById('dashboardDetailRows').innerHTML = state.activities.map(a => {
+    let actPagu = Number(a.pagu || 0);
+    let actReal = getActReal(a.id);
+    let pctAnggaran = actPagu > 0 ? (actReal / actPagu * 100) : 0;
+    let sisaPaguAct = Math.max(0, actPagu - actReal);
+    let actTarget = Number(a.jmlTgt) || 1;
+    let actReaKin = getActReaKin(a.id);
+
+    totalTargetKinerja += actTarget;
+    totalRealisasiKinerja += actReaKin;
+    
+    let badgeAnggaranClass = '';
+    if (pctAnggaran <= 0) {
+      badgeAnggaranClass = 'badge-merah-solid';
+    } else if (pctAnggaran < 100) {
+      badgeAnggaranClass = 'badge-kuning-lemon';
+    } else {
+      badgeAnggaranClass = 'badge-hijau-menyala';
+    }
+
+    let pctKinerja = getActKinerjaPct(a);
+    let badgeKinerjaClass = '';
+    if (pctKinerja <= 0) {
+      badgeKinerjaClass = 'badge-merah-solid';
+    } else if (pctKinerja < 100) {
+      badgeKinerjaClass = 'badge-kuning-lemon';
+    } else {
+      badgeKinerjaClass = 'badge-hijau-menyala';
+    }
+
+    return `
+      <tr>
+        <td><b>${esc(a.uraian)}</b><br><small class="muted">${esc(a.subNama)}</small></td>
+        <td>${money(actPagu)}</td>
+        <td>${money(actReal)}</td>
+        <td>${money(sisaPaguAct)}</td>
+        <td><span class="badge ${badgeAnggaranClass}">${pctAnggaran.toFixed(1)}%</span></td>
+        <td>${actTarget} ${esc(a.satuanTgt || 'Laporan')}</td>
+        <td><b>${actReaKin}</b></td>
+        <td><span class="badge ${badgeKinerjaClass}">${pctKinerja.toFixed(0)}%</span></td>
+      </tr>
+    `;
+  }).join('');
+
+  let badgeTotalAnggaran = pctPenyerapan <= 0 ? 'badge-merah-solid' : (pctPenyerapan < 100 ? 'badge-kuning-lemon' : 'badge-hijau-menyala');
+  let badgeTotalKinerja = avgKinerja <= 0 ? 'badge-merah-solid' : (avgKinerja < 100 ? 'badge-kuning-lemon' : 'badge-hijau-menyala');
+
+  document.getElementById('dashboardDetailFooter').innerHTML = `
+    <tr>
+      <td>TOTAL KESELURUHAN</td>
+      <td>${money(totalPagu)}</td>
+      <td>${money(totalReal)}</td>
+      <td>${money(sisaPagu)}</td>
+      <td><span class="badge ${badgeTotalAnggaran}">${pctPenyerapan.toFixed(1)}%</span></td>
+      <td>${totalTargetKinerja} Item</td>
+      <td>${totalRealisasiKinerja} Item</td>
+      <td><span class="badge ${badgeTotalKinerja}">${avgKinerja.toFixed(1)}%</span></td>
+    </tr>
+  `;
+
+  renderPieCharts(totalReal, sisaPagu, avgKinerja);
+}
+
+function renderPieCharts(real, sisa, avgKin) {
+  Chart.defaults.color = '#334155'; 
+
+  const ctxAng = document.getElementById('chartAnggaranPie').getContext('2d');
+  if (chartAnggaranPieObj) chartAnggaranPieObj.destroy();
+  chartAnggaranPieObj = new Chart(ctxAng, {
+    type: 'pie',
+    data: {
+      labels: ['Realisasi Anggaran', 'Sisa Anggaran'],
+      datasets: [{ data: [real, sisa], backgroundColor: ['#12b76a', '#f04438'], borderColor: '#ffffff', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#1d2939', font: { weight: '600' } } },
+        datalabels: {
+          formatter: (value, ctx) => {
+            let total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+            return total === 0 ? '0%' : (value / total * 100).toFixed(1) + '%';
+          },
+          color: '#ffffff', font: { weight: 'bold', size: 13 }
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+
+  const ctxKin = document.getElementById('chartKinerjaPie').getContext('2d');
+  if (chartKinerjaPieObj) chartKinerjaPieObj.destroy();
+  chartKinerjaPieObj = new Chart(ctxKin, {
+    type: 'pie',
+    data: {
+      labels: ['Capaian Kinerja', 'Belum Tercapai / Sisa'],
+      datasets: [{ data: [avgKin, Math.max(0, 100 - avgKin)], backgroundColor: ['#12b76a', '#f04438'], borderColor: '#ffffff', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#1d2939', font: { weight: '600' } } },
+        datalabels: {
+          formatter: (value) => value.toFixed(1) + '%',
+          color: '#ffffff', font: { weight: 'bold', size: 13 }
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  });
+}
+
+function pindahkanKegiatan(index, arah) {
+  let targetIndex = index + arah;
+  if (targetIndex < 0 || targetIndex >= state.activities.length) return;
+  let temp = state.activities[index];
+  state.activities[index] = state.activities[targetIndex];
+  state.activities[targetIndex] = temp;
+  saveState();
+}
+
+let draggedIndex = null;
+
+function handleDragStart(e) {
+  draggedIndex = Number(e.currentTarget.dataset.index);
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const row = e.currentTarget;
+  if (!row.classList.contains('drag-over')) {
+    document.querySelectorAll('#activities tr').forEach(r => r.classList.remove('drag-over'));
+    row.classList.add('drag-over');
+  }
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const targetRow = e.currentTarget;
+  targetRow.classList.remove('drag-over');
+  const targetIndex = Number(targetRow.dataset.index);
+
+  if (draggedIndex !== null && draggedIndex !== targetIndex) {
+    let movedItem = state.activities.splice(draggedIndex, 1)[0];
+    state.activities.splice(targetIndex, 0, movedItem);
+    saveState();
+  }
+}
+
+function handleDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('#activities tr').forEach(r => r.classList.remove('drag-over'));
+  draggedIndex = null;
+}
+
+function renderActivities() {
+  const q = (document.getElementById('searchAct')?.value || '').toLowerCase();
+  
+  let filteredActivities = state.activities.map((a, originalIndex) => ({...a, _origIdx: originalIndex})).filter(a => 
+    (!q || (a.progNama + " " + a.kegNama + " " + a.subNama + " " + a.uraian).toLowerCase().includes(q))
+  );
+
+  document.getElementById('activities').innerHTML = filteredActivities.map((a, idx) => {
+    let realIdx = a._origIdx;
+    let canUp = realIdx > 0;
+    let canDown = realIdx < state.activities.length - 1;
+
+    return `<tr class="draggable-row" draggable="true" data-index="${realIdx}"
+                ondragstart="handleDragStart(event)"
+                ondragover="handleDragOver(event)"
+                ondragleave="handleDragLeave(event)"
+                ondrop="handleDrop(event)"
+                ondragend="handleDragEnd(event)">
+      <td><b>${esc(a.progNama)}</b><br><small>${esc(a.kegNama)}</small><br><span class="muted small">${esc(a.subNama)}</span></td>
+      <td>${esc(a.uraian)}</td>
+      <td><input type="number" value="${a.pagu}" onchange="updateActField('${a.id}','pagu',Number(this.value))" style="width:110px"></td>
+      <td><input type="number" min="0" value="${a.jmlTgt ?? 1}" onchange="updateActField('${a.id}','jmlTgt',Number(this.value))" style="width:70px"></td>
+      <td><input value="${esc(a.satuanTgt ?? 'Laporan')}" onchange="updateActField('${a.id}','satuanTgt',this.value)" style="width:110px"></td>
+      <td>
+        <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+          <button class="secondary" style="padding:4px 8px; font-size:11px;" ${!canUp ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} onclick="pindahkanKegiatan(${realIdx}, -1)" title="Geser ke Atas">▲</button>
+          <button class="secondary" style="padding:4px 8px; font-size:11px;" ${!canDown ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} onclick="pindahkanKegiatan(${realIdx}, 1)" title="Geser ke Bawah">▼</button>
+          <span class="drag-handle" title="Tarik untuk geser urutan">☰ Geser</span>
+          <button class="danger" style="padding:4px 8px; font-size:11px;" onclick="deleteActivity('${a.id}')">Hapus</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function fillSelects() {
+  const actOpts = `<option value="">-- Pilih Kegiatan --</option>` + state.activities.map(a => `<option value="${a.id}">${esc(a.uraian)} (${esc(a.subNama)})</option>`).join('');
+  if (document.getElementById('tActivity')) document.getElementById('tActivity').innerHTML = actOpts;
+  if (document.getElementById('pActivitySelect')) document.getElementById('pActivitySelect').innerHTML = actOpts;
+
+  const stOpts = state.transactions.map(t => {
+    let a = state.activities.find(x => x.id === t.actId);
+    return `<option value="${t.id}">${esc(t.bukti + ' - ' + (a ? a.uraian : 'Kegiatan Dihapus') + ' (' + t.uraian + ')')}</option>`;
+  }).join('');
+  
+  const kStSel = document.getElementById('kStSelect');
+  if (kStSel) {
+    kStSel.innerHTML = stOpts || '<option value="">-- Belum ada Surat Tugas --</option>';
+    onStSelectChange();
+  }
+}
+
+function getEventColor(jenis) {
+  switch(jenis) {
+    case 'Audit Kinerja / Ketaatan': return '#1d4ed8';
+    case 'Reviu & Evaluasi': return '#047857';
+    case 'Monitoring & Asistensi': return '#b45309';
+    case 'Pemeriksaan Khusus': return '#b91c1c';
+    default: return '#6d28d9';
+  }
+}
+
+const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+function renderRencanaPenugasan() {
+  const container = document.getElementById('rencanaPenugasanRows');
+  if (container) {
+    container.innerHTML = (state.rencanaPenugasan || []).map((p, idx) => {
+      let a = state.activities.find(x => x.id === p.actId);
+      return `<tr>
+        <td>${esc(p.tglMulai)}</td>
+        <td>${esc(p.tglSelesai || p.tglMulai)}</td>
+        <td><span class="badge badge-info">${esc(p.jenis)}</span></td>
+        <td><b>${esc(p.uraian)}</b></td>
+        <td>${a ? esc(a.uraian) : '<span class="muted">-</span>'}</td>
+        <td>${esc(p.tim || '-')}</td>
+        <td><button class="danger" onclick="deleteRencanaPenugasan(${idx})">Hapus</button></td>
+      </tr>`;
+    }).join('');
+  }
+  renderJadwalView();
+}
+
+function changeViewMode(mode) {
+  currentViewMode = mode;
+  ['bulan', 'triwulan', 'semester', 'tahun'].forEach(m => {
+    let btn = document.getElementById('btnMode' + m.charAt(0).toUpperCase() + m.slice(1));
+    if (btn) btn.classList.remove('active');
+  });
+  document.getElementById('btnMode' + mode.charAt(0).toUpperCase() + mode.slice(1)).classList.add('active');
+  renderJadwalView();
+}
+
+function renderJadwalView() {
+  const year = parseInt(activeYear, 10);
+  const container = document.getElementById('calendarContainer');
+  const headerLbl = document.getElementById('calHeaderLabel');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (currentViewMode === 'bulan') {
+    headerLbl.textContent = `${namaBulan[currentCalMonth]} ${year}`;
+    renderMonthlyCalendar(year, currentCalMonth, container);
+  } else if (currentViewMode === 'triwulan') {
+    headerLbl.textContent = `Triwulan ${currentTriwulan} (${year})`;
+    renderTriwulananView(year, currentTriwulan, container);
+  } else if (currentViewMode === 'semester') {
+    headerLbl.textContent = `Semester ${currentSemester} (${year})`;
+    renderSemesteranView(year, currentSemester, container);
+  } else if (currentViewMode === 'tahun') {
+    headerLbl.textContent = `Tahun Anggaran ${year}`;
+    renderTahunanView(year, container);
+  }
+}
+
+function setupDayInteractivity(dayEl, dStr, events) {
+  if (events.length > 0) {
+    dayEl.classList.add('has-event');
+    let tooltipText = events.map(ev => `[${ev.jenis}] ${ev.uraian} (${ev.tim || 'Irban I'})`).join('\n');
+    dayEl.title = `Kegiatan:\n` + tooltipText;
+
+    dayEl.onclick = function() {
+      let detail = events.map((ev, i) => `${i+1}. Jenis: ${ev.jenis}\n   Uraian: ${ev.uraian}\n   Tim: ${ev.tim || '-'}\n   Periode: ${ev.tglMulai} s/d ${ev.tglSelesai || ev.tglMulai}`).join('\n\n');
+      alert(`Daftar Kegiatan pada Tanggal ${dStr}:\n\n` + detail);
+    };
+  }
+}
+
+function renderMonthlyCalendar(year, month, container) {
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let html = `<div class="calendar-grid">
+    <div class="calendar-day-header">Minggu</div>
+    <div class="calendar-day-header">Senin</div>
+    <div class="calendar-day-header">Selasa</div>
+    <div class="calendar-day-header">Rabu</div>
+    <div class="calendar-day-header">Kamis</div>
+    <div class="calendar-day-header">Jumat</div>
+    <div class="calendar-day-header">Sabtu</div>`;
+
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div class="calendar-day other-month"></div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const events = (state.rencanaPenugasan || []).filter(p => dStr >= p.tglMulai && dStr <= (p.tglSelesai || p.tglMulai));
+
+    let bgStyle = '';
+    let dotHtml = '';
+    if (events.length > 0) {
+      let primaryColor = getEventColor(events[0].jenis);
+      bgStyle = `background-color: ${primaryColor}26; border-color: ${primaryColor}; border-width: 2px;`;
+      dotHtml = `<div class="event-dot-container">` + events.map(ev => `<span class="event-dot" style="background:${getEventColor(ev.jenis)};" title="${esc(ev.uraian)}"></span>`).join('') + `</div>`;
+    }
+
+    html += `<div class="calendar-day ${events.length > 0 ? 'has-event' : ''}" style="${bgStyle}" data-date="${dStr}">
+      <div class="day-num">${d}</div>
+      ${dotHtml}
+    </div>`;
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+
+  container.querySelectorAll('.calendar-day[data-date]').forEach(el => {
+    let dStr = el.getAttribute('data-date');
+    let events = (state.rencanaPenugasan || []).filter(p => dStr >= p.tglMulai && dStr <= (p.tglSelesai || p.tglMulai));
+    setupDayInteractivity(el, dStr, events);
+  });
+}
+
+function renderTriwulananView(year, tw, container) {
+  let startMonth = (tw - 1) * 3;
+  let months = [startMonth, startMonth + 1, startMonth + 2];
+
+  let html = `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px;">`;
+  months.forEach(m => {
+    let mName = namaBulan[m];
+    let firstDay = new Date(year, m, 1).getDay();
+    let daysInMonth = new Date(year, m + 1, 0).getDate();
+
+    html += `<div style="background:#f8fafc; border:1px solid var(--line); border-radius:8px; padding:10px;">
+      <h3 style="text-align:center; color:var(--navy); margin-bottom:8px;">${mName} ${year}</h3>
+      <div class="calendar-grid" style="font-size:10px;">
+        <div class="calendar-day-header" style="padding:4px;">Min</div>
+        <div class="calendar-day-header" style="padding:4px;">Sen</div>
+        <div class="calendar-day-header" style="padding:4px;">Sel</div>
+        <div class="calendar-day-header" style="padding:4px;">Rab</div>
+        <div class="calendar-day-header" style="padding:4px;">Kam</div>
+        <div class="calendar-day-header" style="padding:4px;">Jum</div>
+        <div class="calendar-day-header" style="padding:4px;">Sab</div>`;
+
+    for (let i = 0; i < firstDay; i++) {
+      html += `<div class="calendar-day other-month" style="min-height:45px; padding:3px;"></div>`;
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const events = (state.rencanaPenugasan || []).filter(p => dStr >= p.tglMulai && dStr <= (p.tglSelesai || p.tglMulai));
+
+      let bgStyle = '';
+      let dotHtml = '';
+      if (events.length > 0) {
+        let primaryColor = getEventColor(events[0].jenis);
+        bgStyle = `background-color: ${primaryColor}26; border-color: ${primaryColor}; border-width: 2px;`;
+        dotHtml = `<div class="event-dot-container" style="margin-top:2px;">` + events.map(ev => `<span class="event-dot" style="width:6px; height:6px; background:${getEventColor(ev.jenis)};"></span>`).join('') + `</div>`;
+      }
+
+      html += `<div class="calendar-day ${events.length > 0 ? 'has-event' : ''}" style="min-height:45px; padding:3px; ${bgStyle}" data-date="${dStr}">
+        <div class="day-num" style="font-size:10px;">${d}</div>
+        ${dotHtml}
+      </div>`;
+    }
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+
+  container.querySelectorAll('.calendar-day[data-date]').forEach(el => {
+    let dStr = el.getAttribute('data-date');
+    let events = (state.rencanaPenugasan || []).filter(p => dStr >= p.tglMulai && dStr <= (p.tglSelesai || p.tglMulai));
+    setupDayInteractivity(el, dStr, events);
+  });
+}
+
+function renderSemesteranView(year, sem, container) {
+  let startMonth = (sem - 1) * 6;
+  let months = [startMonth, startMonth+1, startMonth+2, startMonth+3, startMonth+4, startMonth+5];
+
+  let html = `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px;">`;
+  months.forEach(m => {
+    let mName = namaBulan[m];
+    let firstDay = new Date(year, m, 1).getDay();
+    let daysInMonth = new Date(year, m + 1, 0).getDate();
+
+    html += `<div style="background:#f8fafc; border:1px solid var(--line); border-radius:8px; padding:10px;">
+      <h3 style="text-align:center; color:var(--navy); margin-bottom:8px;">${mName} ${year}</h3>
+      <div class="calendar-grid" style="font-size:10px;">
+        <div class="calendar-day-header" style="padding:4px;">Min</div>
+        <div class="calendar-day-header" style="padding:4px;">Sen</div>
+        <div class="calendar-day-header" style="padding:4px;">Sel</div>
+        <div class="calendar-day-header" style="padding:4px;">Rab</div>
+        <div class="calendar-day-header" style="padding:4px;">Kam</div>
+        <div class="calendar-day-header" style="padding:4px;">Jum</div>
+        <div class="calendar-day-header" style="padding:4px;">Sab</div>`;
+
+    for (let i = 0; i < firstDay; i++) {
+      html += `<div class="calendar-day other-month" style="min-height:35px; padding:2px;"></div>`;
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const events = (state.rencanaPenugasan || []).filter(p => dStr >= p.tglMulai && dStr <= (p.tglSelesai || p.tglMulai));
+
+      let bgStyle = '';
+      if (events.length > 0) {
+        let primaryColor = getEventColor(events[0].jenis);
+        bgStyle = `background-color: ${primaryColor}30; border-color: ${primaryColor}; border-width: 2px;`;
+      }
+
+      html += `<div class="calendar-day ${events.length > 0 ? 'has-event' : ''}" style="min-height:35px; padding:2px; ${bgStyle}" data-date="${dStr}">
+        <div class="day-num" style="font-size:9px;">${d}</div>
+      </div>`;
+    }
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+
+  container.querySelectorAll('.calendar-day[data-date]').forEach(el => {
+    let dStr = el.getAttribute('data-date');
+    let events = (state.rencanaPenugasan || []).filter(p => dStr >= p.tglMulai && dStr <= (p.tglSelesai || p.tglMulai));
+    setupDayInteractivity(el, dStr, events);
+  });
+}
+
+function renderTahunanView(year, container) {
+  let html = `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px;">`;
+  for (let m = 0; m < 12; m++) {
+    let mName = namaBulan[m];
+    let firstDay = new Date(year, m, 1).getDay();
+    let daysInMonth = new Date(year, m + 1, 0).getDate();
+
+    html += `<div style="background:#f8fafc; border:1px solid var(--line); border-radius:8px; padding:8px;">
+      <h3 style="text-align:center; color:var(--navy); margin-bottom:6px; font-size:12px;">${mName}</h3>
+      <div class="calendar-grid" style="font-size:9px;">
+        <div class="calendar-day-header" style="padding:2px;">M</div>
+        <div class="calendar-day-header" style="padding:2px;">S</div>
+        <div class="calendar-day-header" style="padding:2px;">S</div>
+        <div class="calendar-day-header" style="padding:2px;">R</div>
+        <div class="calendar-day-header" style="padding:2px;">K</div>
+        <div class="calendar-day-header" style="padding:2px;">J</div>
+        <div class="calendar-day-header" style="padding:2px;">S</div>`;
+
+    for (let i = 0; i < firstDay; i++) {
+      html += `<div class="calendar-day other-month" style="min-height:26px; padding:1px;"></div>`;
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = `${year}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const events = (state.rencanaPenugasan || []).filter(p => dStr >= p.tglMulai && dStr <= (p.tglSelesai || p.tglMulai));
+
+      let bgStyle = '';
+      if (events.length > 0) {
+        let primaryColor = getEventColor(events[0].jenis);
+        bgStyle = `background-color: ${primaryColor}35; border-color: ${primaryColor}; border-width: 2px;`;
+      }
+
+      html += `<div class="calendar-day ${events.length > 0 ? 'has-event' : ''}" style="min-height:26px; padding:1px; ${bgStyle}" data-date="${dStr}">
+        <div class="day-num" style="font-size:8px;">${d}</div>
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+
+  container.querySelectorAll('.calendar-day[data-date]').forEach(el => {
+    let dStr = el.getAttribute('data-date');
+    let events = (state.rencanaPenugasan || []).filter(p => dStr >= p.tglMulai && dStr <= (p.tglSelesai || p.tglMulai));
+    setupDayInteractivity(el, dStr, events);
+  });
+}
+
+function prevPeriod() {
+  if (currentViewMode === 'bulan') currentCalMonth = currentCalMonth > 0 ? currentCalMonth - 1 : 11;
+  else if (currentViewMode === 'triwulan') currentTriwulan = currentTriwulan > 1 ? currentTriwulan - 1 : 4;
+  else if (currentViewMode === 'semester') currentSemester = currentSemester > 1 ? currentSemester - 1 : 2;
+  renderJadwalView();
+}
+
+function nextPeriod() {
+  if (currentViewMode === 'bulan') currentCalMonth = currentCalMonth < 11 ? currentCalMonth + 1 : 0;
+  else if (currentViewMode === 'triwulan') currentTriwulan = currentTriwulan < 4 ? currentTriwulan + 1 : 1;
+  else if (currentViewMode === 'semester') currentSemester = currentSemester < 2 ? currentSemester + 2 : 1;
+  renderJadwalView();
+}
+
+function addRencanaPenugasan() {
+  let tglMulai = document.getElementById('pTglMulai').value;
+  let tglSelesai = document.getElementById('pTglSelesai').value || tglMulai;
+  let uraian = document.getElementById('pUraian').value;
+  let jenis = document.getElementById('pJenisKegiatan').value;
+
+  if (!tglMulai || !uraian) {
+    alert('Harap isi Tanggal Mulai dan Uraian Rencana Penugasan.');
+    return;
+  }
+
+  if (!state.rencanaPenugasan) state.rencanaPenugasan = [];
+
+  state.rencanaPenugasan.push({
+    id: 'p_' + Date.now(),
+    tglMulai: tglMulai,
+    tglSelesai: tglSelesai,
+    actId: document.getElementById('pActivitySelect').value || null,
+    jenis: jenis,
+    uraian: uraian,
+    tim: document.getElementById('pTim').value || ''
+  });
+
+  let dt = new Date(tglMulai);
+  if (!isNaN(dt.getMonth())) {
+    currentCalMonth = dt.getMonth();
+    currentTriwulan = Math.floor(currentCalMonth / 3) + 1;
+    currentSemester = currentCalMonth < 6 ? 1 : 2;
+  }
+
+  saveState();
+  ['pTglMulai', 'pTglSelesai', 'pUraian', 'pTim'].forEach(id => document.getElementById(id).value = '');
+}
+
+function deleteRencanaPenugasan(idx) {
+  if (confirm('Hapus rencana penugasan ini?')) {
+    state.rencanaPenugasan.splice(idx, 1);
+    saveState();
+  }
+}
+
+function onStSelectChange() {
+  const stId = document.getElementById('kStSelect')?.value;
+  const st = state.transactions.find(t => t.id === stId);
+  const actDisplay = document.getElementById('kActivityDisplay');
+  if (st && actDisplay) {
+    let a = state.activities.find(x => x.id === st.actId);
+    actDisplay.value = a ? `${a.uraian} (${a.subNama})` : 'Kegiatan Tidak Ditemukan';
+    if (!document.getElementById('kUraian').value) document.getElementById('kUraian').value = st.targetOutput || st.uraian || '';
+  } else if (actDisplay) {
+    actDisplay.value = '';
+  }
+}
+
+function renderTransactions() {
+  let list = state.transactions.map((t, originalIndex) => ({...t, _origIdx: originalIndex}));
+  const sortDir = document.getElementById('filterStSort')?.value || 'asc';
+  list.sort((a, b) => {
+    let dateA = new Date(a.tanggal || '1970-01-01');
+    let dateB = new Date(b.tanggal || '1970-01-01');
+    return sortDir === 'asc' ? dateA - dateB : dateB - dateA;
+  });
+  const limitVal = document.getElementById('filterStLimit')?.value || 'all';
+  if (limitVal !== 'all') list = list.slice(0, Number(limitVal));
+
+  document.getElementById('transactions').innerHTML = list.map(t => {
+    let i = t._origIdx;
+    let a = state.activities.find(x => x.id === t.actId);
+    let fileInfo = t.fileName ? `<a href="${t.fileData}" download="${t.fileName}" style="color:var(--blue);text-decoration:underline;font-weight:600">${esc(t.fileName)}</a>` : `<span class="muted" style="font-size:12px">Tidak ada file</span>`;
+    return `<tr>
+      <td>${esc(t.tanggal)}</td>
+      <td>${esc(a?.uraian || 'Dihapus')}<br><small class="muted">${esc(a?.subNama || '')}</small></td>
+      <td><span class="badge badge-warning">${esc(t.jenis)}</span></td>
+      <td><b>${esc(t.bukti)}</b></td>
+      <td>${esc(t.uraian)}</td>
+      <td><input value="${esc(t.targetOutput || '')}" onchange="updateTransactionField(${i}, 'targetOutput', this.value)" style="width:140px" placeholder="Target Output"></td>
+      <td><input type="number" value="${t.jumlah}" onchange="updateTransactionAmount(${i}, Number(this.value))" style="width:130px"></td>
+      <td>${fileInfo}<br><input type="file" accept=".pdf,.doc,.docx,.jpg,.png" onchange="uploadTransactionFile(${i}, event)" style="font-size:11px;margin-top:4px"></td>
+      <td><button class="danger" onclick="deleteTransaction(${i})">Hapus</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateTransactionField(i, field, val) {
+  state.transactions[i][field] = val;
+  saveState();
+}
+
+function updateTransactionAmount(i, val) {
+  if (val < 0) { alert('Jumlah realisasi tidak boleh negatif.'); return; }
+  state.transactions[i].jumlah = val;
+  saveState();
+}
+
+function uploadTransactionFile(i, event) {
+  let file = event.target.files[0];
+  if (!file) return;
+  let reader = new FileReader();
+  reader.onload = function(e) {
+    state.transactions[i].fileName = file.name;
+    state.transactions[i].fileData = e.target.result;
+    saveState();
+  };
+  reader.readAsDataURL(file);
+}
+
+function addTransaction() {
+  let jumlah = Number(document.getElementById('tJumlah').value);
+  let bukti = document.getElementById('tBukti').value;
+  if (!jumlah || !bukti) { alert('Harap isi Nomor Surat Tugas dan Jumlah Realisasi.'); return; }
+
+  let fileInput = document.getElementById('tFile');
+  let file = fileInput.files[0];
+  let record = {
+    id: 'st_' + Date.now(),
+    tanggal: document.getElementById('tTanggal').value || new Date().toISOString().split('T')[0],
+    actId: document.getElementById('tActivity').value,
+    jenis: document.getElementById('tJenis').value,
+    bukti: bukti,
+    uraian: document.getElementById('tUraian').value,
+    targetOutput: document.getElementById('tTargetOutput').value || '',
+    jumlah: jumlah,
+    fileName: file ? file.name : null,
+    fileData: null
+  };
+
+  if (file) {
+    let reader = new FileReader();
+    reader.onload = function(e) {
+      record.fileData = e.target.result;
+      state.transactions.push(record);
+      saveState();
+      ['tBukti', 'tUraian', 'tTargetOutput', 'tJumlah', 'tFile'].forEach(id => document.getElementById(id).value = '');
+    };
+    reader.readAsDataURL(file);
+  } else {
+    state.transactions.push(record);
+    saveState();
+    ['tBukti', 'tUraian', 'tTargetOutput', 'tJumlah', 'tFile'].forEach(id => document.getElementById(id).value = '');
+  }
+}
+
+function deleteTransaction(i) {
+  if (confirm('Hapus transaksi realisasi ini?')) { 
+    let st = state.transactions[i];
+    if (st && st.id && state.kinerjaTransactions) {
+      state.kinerjaTransactions = state.kinerjaTransactions.filter(k => k.stId !== st.id);
+    }
+    state.transactions.splice(i, 1); 
+    saveState(); 
+  }
+}
+
+function renderRealisasiKinerja() {
+  let list = (state.kinerjaTransactions || []).map((t, originalIndex) => ({...t, _origIdx: originalIndex}));
+  const sortDir = document.getElementById('filterKinSort')?.value || 'asc';
+  list.sort((a, b) => {
+    let dateA = new Date(a.tanggal || '1970-01-01');
+    let dateB = new Date(b.tanggal || '1970-01-01');
+    return sortDir === 'asc' ? dateA - dateB : dateB - dateA;
+  });
+  const limitVal = document.getElementById('filterKinLimit')?.value || 'all';
+  if (limitVal !== 'all') list = list.slice(0, Number(limitVal));
+
+  document.getElementById('kinerjaTransactions').innerHTML = list.map(t => {
+    let i = t._origIdx;
+    let st = state.transactions.find(x => x.id === t.stId);
+    let a = state.activities.find(x => x.id === (st ? st.actId : t.actId));
+    let fileInfo = t.fileName ? `<a href="${t.fileData}" download="${t.fileName}" style="color:var(--blue);text-decoration:underline;font-weight:600">${esc(t.fileName)}</a>` : `<span class="muted" style="font-size:12px">Tidak ada file</span>`;
+    
+    return `<tr>
+      <td>${esc(t.tanggal)}</td>
+      <td><b>${esc(st?.bukti || t.stId || 'N/A')}</b></td>
+      <td>${esc(a?.uraian || 'Dihapus')}<br><small class="muted">${esc(a?.subNama || '')}</small></td>
+      <td><input value="${esc(t.bukti)}" onchange="updateKinerjaTransactionField(${i}, 'bukti', this.value)" style="width:130px"></td>
+      <td><input value="${esc(t.uraian)}" onchange="updateKinerjaTransactionField(${i}, 'uraian', this.value)" style="width:160px"></td>
+      <td><input type="number" step="0.1" value="${t.jumlah}" onchange="updateKinerjaTransactionField(${i}, 'jumlah', Number(this.value))" style="width:90px"></td>
+      <td>${fileInfo}<br><input type="file" accept=".pdf,.doc,.docx,.jpg,.png" onchange="uploadKinerjaFile(${i}, event)" style="font-size:11px;margin-top:4px"></td>
+      <td><button class="danger" onclick="deleteKinerjaTransaction(${i})">Hapus</button></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('realisasiKinerjaRows').innerHTML = state.activities.map(a => {
+    let reaKin = getActReaKin(a.id);
+    let pctKin = getActKinerjaPct(a);
+    let badgeClass = pctKin >= 100 ? 'badge-hijau-menyala' : (pctKin > 0 ? 'badge-kuning-lemon' : 'badge-merah-solid');
+    let statusText = pctKin >= 100 ? 'Tercapai' : (pctKin > 0 ? 'Belum Tercapai' : 'Belum Realisasi');
+
+    return `<tr>
+      <td><b>${esc(a.uraian)}</b><br><small class="muted">${esc(a.subNama)}</small></td>
+      <td>${Number(a.jmlTgt) || 1} ${esc(a.satuanTgt ?? 'Laporan')}</td>
+      <td><b>${reaKin}</b></td>
+      <td><span class="badge ${badgeClass}">${pctKin.toFixed(0)}%</span></td>
+      <td><span class="badge ${badgeClass}">${statusText}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function uploadKinerjaFile(i, event) {
+  let file = event.target.files[0];
+  if (!file) return;
+  let reader = new FileReader();
+  reader.onload = function(e) {
+    state.kinerjaTransactions[i].fileName = file.name;
+    state.kinerjaTransactions[i].fileData = e.target.result;
+    saveState();
+  };
+  reader.readAsDataURL(file);
+}
+
+function addKinerjaTransaction() {
+  let stId = document.getElementById('kStSelect').value;
+  let st = state.transactions.find(x => x.id === stId);
+  if (!st) { alert('Harap pilih Surat Tugas (ST) terlebih dahulu.'); return; }
+
+  let jumlah = Number(document.getElementById('kJumlah').value);
+  let bukti = document.getElementById('kBukti').value;
+  if (!jumlah || !bukti) { alert('Harap isi Nomor Bukti Laporan dan Jumlah Realisasi Kinerja.'); return; }
+
+  let fileInput = document.getElementById('kFile');
+  let file = fileInput.files[0];
+  let record = {
+    tanggal: document.getElementById('kTanggal').value || new Date().toISOString().split('T')[0],
+    stId: stId,
+    actId: st.actId,
+    bukti: bukti,
+    uraian: document.getElementById('kUraian').value || st.targetOutput || st.uraian,
+    jumlah: jumlah,
+    fileName: file ? file.name : null,
+    fileData: null
+  };
+
+  if (!state.kinerjaTransactions) state.kinerjaTransactions = [];
+
+  if (file) {
+    let reader = new FileReader();
+    reader.onload = function(e) {
+      record.fileData = e.target.result;
+      state.kinerjaTransactions.push(record);
+      saveState();
+      ['kBukti', 'kUraian', 'kJumlah', 'kFile'].forEach(id => document.getElementById(id).value = '');
+    };
+    reader.readAsDataURL(file);
+  } else {
+    state.kinerjaTransactions.push(record);
+    saveState();
+    ['kBukti', 'kUraian', 'kJumlah', 'kFile'].forEach(id => document.getElementById(id).value = '');
+  }
+}
+
+function updateKinerjaTransactionField(i, field, val) {
+  if (field === 'jumlah' && val < 0) { alert('Jumlah realisasi tidak boleh negatif.'); return; }
+  state.kinerjaTransactions[i][field] = val;
+  saveState();
+}
+
+function deleteKinerjaTransaction(i) {
+  if (confirm('Hapus entri realisasi kinerja ini?')) { state.kinerjaTransactions.splice(i, 1); saveState(); }
+}
+
+function updateActField(id, k, v) {
+  let a = state.activities.find(x => x.id === id);
+  if (a) { a[k] = v; saveState(); }
+}
+
+function deleteActivity(id) {
+  if (confirm('Hapus rincian kegiatan ini? Transaksi terkait juga akan terhapus.')) {
+    state.activities = state.activities.filter(a => a.id !== id);
+    state.transactions = state.transactions.filter(t => t.actId !== id);
+    if (state.kinerjaTransactions) state.kinerjaTransactions = state.kinerjaTransactions.filter(t => t.actId !== id);
+    saveState();
+  }
+}
+
+function addActivity() {
+  let progNama = document.getElementById('nProgNama').value;
+  let kegNama = document.getElementById('nKegNama').value;
+  let subNama = document.getElementById('nSubNama').value;
+  let uraian = document.getElementById('nUraian').value;
+
+  if (!progNama || !kegNama || !subNama || !uraian) { 
+    alert('Nama Program, Nama Kegiatan, Nama Subkegiatan, dan Uraian Kegiatan wajib diisi.'); 
+    return; 
+  }
+
+  state.activities.push({
+    id: 'act_' + Date.now(),
+    progNama: progNama, kegNama: kegNama, subNama: subNama, uraian: uraian,
+    pagu: Number(document.getElementById('nPagu').value || 0),
+    jmlTgt: Number(document.getElementById('nTgtJml').value || 1),
+    satuanTgt: document.getElementById('nTgtSat').value || 'Laporan'
+  });
+
+  saveState();
+  ['nProgNama', 'nKegNama', 'nSubNama', 'nUraian', 'nPagu', 'nTgtJml', 'nTgtSat'].forEach(id => document.getElementById(id).value = '');
+}
+
+function exportCSV() {
+  let rows = [['Program', 'Kegiatan', 'Subkegiatan', 'Uraian Kegiatan', 'Target Anggaran', 'Realisasi Anggaran', 'Sisa Anggaran', 'Target Kinerja', 'Realisasi Kinerja', '% Capaian Kinerja']];
+  state.activities.forEach(a => {
+    rows.push([a.progNama, a.kegNama, a.subNama, a.uraian, a.pagu, getActReal(a.id), a.pagu - getActReal(a.id), (a.jmlTgt + " " + a.satuanTgt), getActReaKin(a.id), getActKinerjaPct(a).toFixed(1) + '%']);
+  });
+  let csv = rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(';')).join('\n');
+  downloadFile(new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8'}), `Rekap_Irban1_${activeYear}.csv`);
+}
+
+function backupJSON() {
+  downloadFile(new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'}), `Backup_Irban1_${activeYear}.json`);
+}
+
+function restoreBackup(e) {
+  let f = e.target.files[0];
+  if (!f) return;
+  let rd = new FileReader();
+  rd.onload = () => {
+    try {
+      let parsed = JSON.parse(rd.result);
+      if (!parsed.activities) throw 0;
+      state = parsed;
+      saveState();
+      alert(`Backup TA ${activeYear} berhasil dipulihkan.`);
+    } catch (err) { alert('File backup tidak valid.'); }
+  };
+  rd.readAsText(f);
+}
+
+function downloadFile(blob, filename) {
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function renderRealisasiAnggaranRingkasan() {
+  const container = document.getElementById('realisasiAnggaranRows');
+  if (!container) return;
+
+  container.innerHTML = state.activities.map(a => {
+    let actPagu = Number(a.pagu || 0);
+    let actReal = getActReal(a.id);
+    let sisaPagu = Math.max(0, actPagu - actReal);
+    let pctAnggaran = actPagu > 0 ? (actReal / actPagu * 100) : 0;
+    let badgeClass = pctAnggaran >= 100 ? 'badge-hijau-menyala' : (pctAnggaran > 0 ? 'badge-kuning-lemon' : 'badge-merah-solid');
+    let statusText = pctAnggaran >= 100 ? 'Tercapai' : (pctAnggaran > 0 ? 'Proses Realisasi' : 'Belum Realisasi');
+
+    return `<tr>
+      <td><b>${esc(a.uraian)}</b><br><small class="muted">${esc(a.subNama)}</small></td>
+      <td>${money(actPagu)}</td>
+      <td><b>${money(actReal)}</b></td>
+      <td><span class="badge ${badgeClass}">${money(sisaPagu)}</span></td>
+      <td><b>${pctAnggaran.toFixed(1)}%</b></td>
+      <td><span class="badge ${badgeClass}">${statusText}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAll() {
+  document.getElementById('headerTahunAnggaran').textContent = activeYear;
+  document.querySelectorAll('.lblTahun').forEach(el => el.textContent = activeYear);
+
+  fillSelects();
+  renderDashboard();
+  renderActivities();
+  renderRencanaPenugasan();
+  renderRealisasiKinerja();
+  renderTransactions();
+  renderRealisasiAnggaranRingkasan();
+}
+
+function cetakSemuaLaporan() {
+  const activeTab = document.querySelector('.tab.active')?.dataset.page || 'laporan';
+  const sections = document.querySelectorAll('main section');
+
+  sections.forEach(sec => sec.classList.remove('hidden'));
+
+  window.print();
+
+  sections.forEach(sec => {
+    if (sec.id !== activeTab) {
+      sec.classList.add('hidden');
+    }
+  });
+}
+
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.querySelectorAll('main section').forEach(x => x.classList.add('hidden'));
+  document.getElementById(b.dataset.page).classList.remove('hidden');
+}));
+
+// Inisialisasi Muat Data dari Google Spreadsheet
+loadStateForYear("2026");
+</script>
+
+</body>
+</html>
